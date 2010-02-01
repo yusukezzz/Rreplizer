@@ -31,7 +31,7 @@ loop do
   begin
     rreplizer.get
     rreplizer.sendmail if rreplizer.new_replies?
-    sleep 60
+    sleep 300
     rreplizer.fetchmail
   rescue => e
     logger.error(e.message)
