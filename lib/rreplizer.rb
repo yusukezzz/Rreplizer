@@ -69,7 +69,7 @@ module Rreplizer
     def initialize(options = {})
       @account = Rreplizer::Account.new(options)
       @since_id = self.get(1) # get latest reply id
-      @replies = [] # drop latest reply when got @since_id
+      @replies = []
     end
 
     # return true if recieve new replies(newer than @since_id)
@@ -79,7 +79,7 @@ module Rreplizer
 
     # get latest replies
     def get(count = 20)
-      uri = "http://twitter.com/statuses/replies.json?count=#{count.to_s}"
+      uri = "http://twitter.com/statuses/mentions.json?count=#{count.to_s}"
       (uri << "&since_id=#{@since_id.to_s}") if @since_id
       res = @account.connection(uri)
       @replies = JSON.parse(res.body) if res.code == '200'
@@ -92,11 +92,13 @@ module Rreplizer
       mails = @account.fetchmail
       mails.each do |m|
         mail = TMail::Mail.parse(m)
-        subject = Array.new(mail.subject.toutf8.split(':'))
-        users = Array.new(subject[subject.length - 2].split(','))
-        in_reply_to = subject[subject.length - 1].to_s
-        tweet = mail.body.to_s
-        self.post(users, tweet, in_reply_to) if mail.from.to_s == @account.sendto.to_s
+        if mail.subject && mail.body
+          subject = Array.new(mail.subject.toutf8.split(':'))
+          users = Array.new(subject[subject.length - 2].split(','))
+          in_reply_to = subject[subject.length - 1].to_s
+          tweet = mail.body.to_s
+          self.post(users, tweet, in_reply_to) if mail.from.to_s == @account.sendto.to_s
+        end
       end
     end
 
@@ -108,7 +110,7 @@ module Rreplizer
     end
 
   protected
-    # reply post to twitter from email
+    # reply post to twitter
     def post(users, tweet, in_reply_to)
       if tweet
         update = "#{users.map{|u| "@#{u}"}.join(' ')} #{tweet.toutf8}"
@@ -130,7 +132,7 @@ module Rreplizer
     def tomail
       @replies.reverse
       subject = 'Reply from:' + self.users.join(',') + ":#{@replies[0]['id'].to_s}"
-      body = @replies.map{|r| "#{r['text']} from #{r['user']['screen_name']}" }.join("\r\n")
+      body = @replies.map{|r| "#{r['text']} from #{r['user']['screen_name']}"}.join("\r\n")
       mail = TMail::Mail.new
       mail.subject = subject.tojis
       mail.body = body.tojis
