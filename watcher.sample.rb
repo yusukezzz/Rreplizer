@@ -1,7 +1,7 @@
 require 'rubygems'
+require 'logger'
 require 'highline'
 require 'lib/rreplizer'
-require 'logger'
 
 logger = Logger.new('rreplizer.log')
 logger.level = Logger::ERROR

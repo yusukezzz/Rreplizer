@@ -23,19 +23,24 @@ module Rreplizer
 
     # http access
     def connection(uri, method = :get)
-      uri = URI.parse(uri)
-      http = Net::HTTP.new(uri.host)
-      req = nil
-      case method
-      when :get
-        req = Net::HTTP::Get.new(uri.path+'?'+uri.query.to_s)
-      when :post
-        req = Net::HTTP::Post.new(uri.path)
-        req.body = uri.query
+      begin
+        uri = URI.parse(uri)
+        http = Net::HTTP.new(uri.host)
+        req = nil
+        case method
+        when :get
+          req = Net::HTTP::Get.new(uri.path+'?'+uri.query.to_s)
+        when :post
+          req = Net::HTTP::Post.new(uri.path)
+          req.body = uri.query
+        end
+        req.basic_auth(@twitter_id.to_s, @twitter_pass.to_s)
+        res = http.request(req)
+        return res
+      rescue
+        sleep 60
+        redo
       end
-      req.basic_auth(@twitter_id.to_s, @twitter_pass.to_s)
-      res = http.request(req)
-      return res
     end
 
     # tls smtp send mail
