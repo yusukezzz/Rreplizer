@@ -34,7 +34,7 @@ loop do
     sleep 300
     rreplizer.fetch_mail
   rescue => e
-    logger.error("#{caller().to_s} - #{e.message}")
+    logger.error(e.backtrace.join("\n"))
     sleep 120
   end
 end
