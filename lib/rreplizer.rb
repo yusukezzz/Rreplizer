@@ -39,25 +39,25 @@ module Rreplizer
         return res
       rescue
         sleep 60
-        redo
+        retry
       end
     end
 
     # tls smtp send mail
-    def sendmail(mail)
+    def send_mail(mail)
       mail.from = @gmail_id
       mail.to = @sendto
       result = nil
       Net::SMTP.enable_tls(OpenSSL::SSL::VERIFY_NONE)
       Net::SMTP.start('smtp.gmail.com', 587, 'localhost.localdomain',
                       @gmail_id.to_s + '@gmail.com', @gmail_pass.to_s, 'plain') do |smtp|
-        result = smtp.sendmail(mail.encoded, mail.from, mail.to)
+        result = smtp.send_mail(mail.encoded, mail.from, mail.to)
       end
       return result
     end
 
     # ssl pop3 get mails
-    def fetchmail
+    def fetch_mail
       mails = []
       Net::POP3.enable_ssl(OpenSSL::SSL::VERIFY_NONE)
       Net::POP3.delete_all('pop.gmail.com', 995, @gmail_id.to_s, @gmail_pass.to_s) do |m|
@@ -93,8 +93,8 @@ module Rreplizer
     end
 
     # recieve email
-    def fetchmail
-      mails = @account.fetchmail
+    def fetch_mail
+      mails = @account.fetch_mail
       mails.each do |m|
         mail = TMail::Mail.parse(m)
         if mail.subject && mail.body
@@ -107,10 +107,13 @@ module Rreplizer
       end
     end
 
-    # do Account.sendmail
-    def sendmail
-      mail = self.tomail
-      result = @account.sendmail(mail)
+    # do Account.send_mail
+    def send_mail
+      result = nil
+      mails = self.to_mail
+      mails.each do |m|
+        result = @account.send_mail(m)
+      end
       @replies = [] if result =~ /OK/
     end
 
@@ -125,26 +128,36 @@ module Rreplizer
     end
 
     # return latest reply users
-    def users
+    def get_users(replies)
       users = []
-      @replies.each do |r|
+      replies.each do |r|
         users << r['user']['screen_name']
       end
       return users.uniq
     end
 
     # convert replies to mail
-    def tomail
-      @replies.reverse
-      subject = 'Reply from:' + self.users.join(',') + ":#{@replies[0]['id'].to_s}"
-      body = @replies.map{|r| "#{r['text']} from #{r['user']['screen_name']}"}.join("\r\n")
-      mail = TMail::Mail.new
-      mail.subject = subject.tojis
-      mail.body = body.tojis
-      mail.date = Time.now
-      mail.mime_version = '1.0'
-      mail.set_content_type 'text', 'plain', {'charset' => 'iso-2022-jp'}
-      return mail
+    def to_mail
+      @replies.reverse!
+      mails = []
+      # replies divide by in_reply_to_status_id
+      for i in @replies.map{|r| r['in_reply_to_status_id'] }.uniq
+        to_mail_replies = []
+        @replies.each do |r|
+          to_mail_replies << r if r['in_reply_to_status_id'] == i
+        end
+        # to mail
+        subject = 'Reply from:' + get_users(to_mail_replies).join(',') + ":#{to_mail_replies[0]['id'].to_s}"
+        body = to_mail_replies.map{|tmr| "#{tmr['text']} from #{tmr['user']['screen_name']}"}.join("\r\n")
+        mail = TMail::Mail.new
+        mail.subject = subject.toutf8
+        mail.body = body.toutf8
+        mail.date = Time.now
+        mail.mime_version = '1.0'
+        mail.set_content_type 'text', 'plain', {'charset' => 'utf-8'}
+        mails << mail
+      end
+      return mails
     end
   end
 end

@@ -30,11 +30,11 @@ rreplizer = Rreplizer::Reply.new(options)
 loop do
   begin
     rreplizer.get
-    rreplizer.sendmail if rreplizer.new_replies?
+    rreplizer.send_mail if rreplizer.new_replies?
     sleep 300
-    rreplizer.fetchmail
+    rreplizer.fetch_mail
   rescue => e
-    logger.error(e.message)
+    logger.error("#{caller().to_s} - #{e.message}")
     sleep 120
   end
 end
